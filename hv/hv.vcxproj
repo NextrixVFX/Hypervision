@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <ProjectGuid>{3d398f80-6e61-4b7e-b6de-fa1db1e266f9}</ProjectGuid>
+    <RootNamespace>hv</RootNamespace>
+    <ProjectName>hv</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.28000.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>WDM</DriverType>
+    <DriverTargetPlatform>Desktop</DriverTargetPlatform>
+    <Driver_SpectreMitigation>false</Driver_SpectreMitigation>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>WDM</DriverType>
+    <DriverTargetPlatform>Desktop</DriverTargetPlatform>
+    <Driver_SpectreMitigation>false</Driver_SpectreMitigation>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <EnableInf2cat>false</EnableInf2cat>
+    <InfVerif>false</InfVerif>
+    <SkipPackageVerification>true</SkipPackageVerification>
+    <OutDir>$(SolutionDir)builds\$(ProjectName)\</OutDir>
+    <IntDir>$(SolutionDir)builds\$(ProjectName)\intermediates\</IntDir>
+    <IncludePath>.\;$(IncludePath)</IncludePath>
+    <TargetName>Hypervision</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <EnableInf2cat>false</EnableInf2cat>
+    <InfVerif>false</InfVerif>
+    <SkipPackageVerification>true</SkipPackageVerification>
+    <OutDir>$(SolutionDir)builds\$(ProjectName)\</OutDir>
+    <IntDir>$(SolutionDir)builds\$(ProjectName)\intermediates\</IntDir>
+    <IncludePath>.\;$(IncludePath)</IncludePath>
+    <TargetName>Hypervision</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <ExceptionHandling>false</ExceptionHandling>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_DEBUG;_AMD64_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <LanguageStandard_C>stdclatest</LanguageStandard_C>
+    </ClCompile>
+    <Link>
+      <EntryPointSymbol>DriverEntry</EntryPointSymbol>
+    </Link>
+    <MASM>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </MASM>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <ExceptionHandling>false</ExceptionHandling>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;_AMD64_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <LanguageStandard_C>stdclatest</LanguageStandard_C>
+    </ClCompile>
+    <Link>
+      <EntryPointSymbol>DriverEntry</EntryPointSymbol>
+    </Link>
+    <MASM>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </MASM>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="entrypoint.cxx" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="impl\includes.hxx" />
+    <ClInclude Include="impl\std\std.hxx" />
+    <ClInclude Include="impl\crt\crt.hxx" />
+    <ClInclude Include="impl\amd\svm.hxx" />
+    <ClInclude Include="impl\nt\resolver.hxx" />
+    <ClInclude Include="impl\nt\exports.hxx" />
+    <ClInclude Include="impl\nt\nt.hxx" />
+    <ClInclude Include="impl\gadgets\gadgets.hxx" />
+    <ClInclude Include="workspace\utility\common.hxx" />
+    <ClInclude Include="workspace\utility\log.hxx" />
+    <ClInclude Include="workspace\utility\cpu.hxx" />
+    <ClInclude Include="workspace\core\npt\npt.hxx" />
+    <ClInclude Include="workspace\core\svm\vcpu.hxx" />
+    <ClInclude Include="workspace\core\svm\vmexit.hxx" />
+    <ClInclude Include="workspace\core\svm\hypervisor.hxx" />
+    <ClInclude Include="workspace\core\split\split.hxx" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="impl\amd\svm.asm" />
+    <MASM Include="impl\nt\ntoskrnl.asm" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="architecture.md" />
+    <None Include="documentation\amd64_arch_programmers_manual-vol2-system_programming.pdf" />
+  </ItemGroup>
+  <ItemGroup>
+    <Inf Include="impl\hv.inf" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
