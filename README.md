@@ -92,3 +92,4 @@ AMD manuals used in comments: APM Vol. 2 (24593) and SVM Architecture Reference 
 - Unload is not implemented
 - Split-page hooks that single-step are expensive on hot pages (two `#VMEXIT`s per instruction)
 - AMD NPT has no execute-only permission (Present implies readable)
+- Kind of unstable, this is just a project for learning cpu virtualization.
