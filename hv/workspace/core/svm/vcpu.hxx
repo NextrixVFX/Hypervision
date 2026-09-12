@@ -24,6 +24,11 @@ namespace hv
 		amd::vmcb_t* vmcb;
 		void* host_stack;
 		void* host_save;
+		std::uint64_t host_fs_base;
+		std::uint64_t host_gs_base;
+		std::uint64_t host_kernel_gs_base;
+		std::uint64_t host_cr8;
+		std::uint64_t guest_cr8;
 		std::uint32_t cpu_index;
 		bool virtualized;
 		bool stop;
@@ -34,6 +39,21 @@ namespace hv
 	static_assert(offsetof(vcpu_t, vmcb_pa) == 112);
 	static_assert(offsetof(vcpu_t, host_stack_top) == 120);
 	static_assert(offsetof(vcpu_t, vmcb) == 128);
+	static_assert(offsetof(vcpu_t, host_fs_base) == 152);
+	static_assert(offsetof(vcpu_t, host_gs_base) == 160);
+	static_assert(offsetof(vcpu_t, host_kernel_gs_base) == 168);
+	static_assert(offsetof(vcpu_t, host_cr8) == 176);
+	static_assert(offsetof(vcpu_t, guest_cr8) == 184);
+
+	inline void advance_rip(vcpu_t* vcpu)
+	{
+		auto& ctrl = vcpu->vmcb->ctrl;
+		auto& state = vcpu->vmcb->state;
+		if (ctrl.nrip && ctrl.nrip != state.rip)
+			state.rip = ctrl.nrip;
+		else if (ctrl.inst_fetched_count)
+			state.rip += ctrl.inst_fetched_count;
+	}
 
 	struct shared_t
 	{
@@ -43,7 +63,7 @@ namespace hv
 		void* iopm;
 	};
 
-	shared_t g_shared{};
+	shared_t g_shared;
 
 	inline void cpuid_text(char* dst, int a, int b, int c)
 	{
@@ -315,6 +335,7 @@ namespace hv
 		c.intercept_misc1 = amd::intercept_cpuid | amd::intercept_msr | amd::intercept_shutdown;
 		c.intercept_misc2 = amd::intercept_vmrun | amd::intercept_vmmcall | amd::intercept_vmload |
 			amd::intercept_vmsave | amd::intercept_stgi | amd::intercept_clgi | amd::intercept_skinit;
+		c.intercept_exception = amd::intercept_db;
 
 		c.iopm_base_pa = nt::pa(g_shared.iopm);
 		c.msrpm_base_pa = nt::pa(g_shared.msrpm);
@@ -346,6 +367,11 @@ namespace hv
 		// following host state information at the physical address specified in the
 		// new MSR, VM_HSAVE_PA"
 		__writemsr(amd::msr_vm_hsave_pa, nt::pa(vcpu->host_save));
+		vcpu->host_fs_base = __readmsr(amd::msr_fs_base);
+		vcpu->host_gs_base = __readmsr(amd::msr_gs_base);
+		vcpu->host_kernel_gs_base = __readmsr(amd::msr_kernel_gs_base);
+		vcpu->host_cr8 = __readcr8();
+		vcpu->guest_cr8 = vcpu->host_cr8;
 		capture(vcpu);
 		setup_ctrl(vcpu);
 

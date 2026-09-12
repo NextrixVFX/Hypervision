@@ -22,7 +22,6 @@ namespace hv
 
 	inline NTSTATUS virtualize_all()
 	{
-		// Bring-up order is documented in architecture.md (capability check → maps → NPT → split → VMRUN).
 		const NTSTATUS caps = probe_svm_npt();
 		if (!NT_SUCCESS(caps))
 			return caps;
@@ -36,6 +35,16 @@ namespace hv
 			shared_teardown();
 			return STATUS_INSUFFICIENT_RESOURCES;
 		}
+
+		if (!mm::g_paging.setup())
+		{
+			npt::g_npt.cleanup();
+			shared_teardown();
+			return STATUS_UNSUCCESSFUL;
+		}
+
+		if (!mm::phys::setup())
+			hv_log("phys window unavailable (continuing)");
 
 		if (!split::install(reinterpret_cast<void*>(&lab_add), lab_exec, sizeof(lab_exec)))
 			hv_log("lab split hook failed (continuing without it)");

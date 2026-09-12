@@ -45,11 +45,11 @@ namespace gadgets
 
 	struct info_t
 	{
-		std::uint64_t address{};
-		gadget_t id{};
-		std::uint32_t imm_offset{};
-		std::uint8_t imm_size{};
-		bool used{};
+		std::uint64_t address;
+		gadget_t id;
+		std::uint32_t imm_offset;
+		std::uint8_t imm_size;
+		bool used;
 	};
 
 	inline const std::uint8_t pat_pop_rax_ret[] = { 0x58, 0xC3 };
@@ -115,8 +115,8 @@ namespace gadgets
 
 	class c_scanner
 	{
-		info_t m_cache[cache_capacity]{};
-		std::uint32_t m_count{};
+		info_t m_cache[cache_capacity];
+		std::uint32_t m_count;
 
 		bool matches(const std::uint8_t* bytes, const descriptor_t& desc) const
 		{

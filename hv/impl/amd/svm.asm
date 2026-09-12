@@ -1,6 +1,7 @@
 ; Keep offsets in sync with hv::vcpu_t in workspace/core/svm/vcpu.hxx.
 
 PUBLIC hv_svm_launch
+PUBLIC hv_call_on_stack
 PUBLIC hv_read_cs
 PUBLIC hv_read_ss
 PUBLIC hv_read_ds
@@ -32,6 +33,15 @@ HV_VCPU_R15            EQU 104
 HV_VCPU_VMCB_PA        EQU 112
 HV_VCPU_HOST_STACK_TOP EQU 120
 HV_VCPU_VMCB           EQU 128
+HV_VCPU_HOST_FS        EQU 152
+HV_VCPU_HOST_GS        EQU 160
+HV_VCPU_HOST_KERNEL_GS EQU 168
+HV_VCPU_HOST_CR8       EQU 176
+HV_VCPU_GUEST_CR8      EQU 184
+
+IA32_FS_BASE           EQU 0C0000100h
+IA32_GS_BASE           EQU 0C0000101h
+IA32_KERNEL_GS_BASE    EQU 0C0000102h
 
 HV_VMCB_RIP            EQU 0578h
 HV_VMCB_RSP            EQU 05D8h
@@ -135,6 +145,15 @@ host_loop:
     mov r15, [rax + HV_VCPU_R15]
     mov rax, [rax + HV_VCPU_VMCB_PA]
 
+    ; SVM does not switch CR8. Load the guest value before VMRUN so the
+    ; guest keeps its IRQL; host CR8 is restored after #VMEXIT.
+    push rax
+    mov rax, [rsp + 8]
+    mov rax, [rax + HV_VCPU_GUEST_CR8]
+    and rax, 0Fh
+    mov cr8, rax
+    pop rax
+
     ; SVM Architecture Reference (33047) §2.13: clear GIF so the host world-switch
     ; is atomic. VMRUN then sets GIF=1 after guest state is loaded.
     ; §2.11: VMLOAD/VMSAVE take the VMCB physical address in rAX and move hidden
@@ -163,6 +182,39 @@ host_loop:
     mov [rax + HV_VCPU_R14], r14
     mov [rax + HV_VCPU_R15], r15
 
+    ; CR8 is guest IRQL at this point. Park it and restore the host value
+    ; saved at virtualize so NT sees PASSIVE, not 0xFF from a TEB GS.
+    mov r11, cr8
+    mov [rax + HV_VCPU_GUEST_CR8], r11
+    mov r11, [rax + HV_VCPU_HOST_CR8]
+    and r11, 0Fh
+    mov cr8, r11
+
+    ; VMRUN/#VMEXIT restore CS/RIP/CR3/IDT from HSAVE, not FS/GS. VMLOAD before
+    ; VMRUN loaded guest FS/GS (the TEB when the guest was in CPL3). NT APIs
+    ; use GS as KPCR — write the host bases saved at virtualize before C code.
+    mov r11, rax
+    mov ecx, IA32_FS_BASE
+    mov rax, [r11 + HV_VCPU_HOST_FS]
+    mov rdx, rax
+    shr rdx, 32
+    wrmsr
+    mov ecx, IA32_GS_BASE
+    mov rax, [r11 + HV_VCPU_HOST_GS]
+    mov rdx, rax
+    shr rdx, 32
+    wrmsr
+    mov ecx, IA32_KERNEL_GS_BASE
+    mov rax, [r11 + HV_VCPU_HOST_KERNEL_GS]
+    mov rdx, rax
+    shr rdx, 32
+    wrmsr
+    mov rax, r11
+
+    pushfq
+    and qword ptr [rsp], 0FFFFFFFFFFFFFEFFh
+    popfq
+
     mov rcx, rax
     sub rsp, 20h
     call hv_handle_vmexit
@@ -184,5 +236,35 @@ guest_land:
     mov eax, 1
     ret
 hv_svm_launch ENDP
+
+; rcx = fn, rdx = arg, r8 = stack top (grows down)
+; Switch onto a real KTHREAD stack, then STGI so MmCopyMemory can take #PF.
+; Keep IF=0 so the clock DPC does not run on this borrowed stack (0xD1
+; IRQL=0xFF / NULL fetch after a handful of VMMCALLs).
+; Drop 0x80 below InitialStack (16-aligned, includes 0x20 shadow).
+hv_call_on_stack PROC
+    push rbx
+    push rsi
+    mov rbx, rsp
+    mov rsi, rcx
+    mov rcx, rdx
+    and r8, 0FFFFFFFFFFFFFFF0h
+    sub r8, 80h
+    mov rsp, r8
+    pushfq
+    and qword ptr [rsp], 0FFFFFFFFFFFFFCFFh
+    popfq
+    cli
+    xor eax, eax
+    mov dr7, rax
+    sub rsp, 8
+    stgi
+    call rsi
+    clgi
+    mov rsp, rbx
+    pop rsi
+    pop rbx
+    ret
+hv_call_on_stack ENDP
 
 END

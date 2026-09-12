@@ -38,6 +38,7 @@ namespace amd
 	// during software debug. [...] a debug exception (#DB) occurs immediately after the
 	// instruction completes execution."
 	inline constexpr std::uint64_t rflags_tf = 1ull << 8;
+	inline constexpr std::uint64_t rflags_if = 1ull << 9;
 
 	// VMCB intercepts at control +010h / +014h (APM Vol. 2 Appendix B VMCB layout).
 	// +010h bit 18 CPUID, bit 28 MSR_PROT, bit 31 SHUTDOWN.
@@ -229,3 +230,4 @@ extern "C" std::uint16_t hv_read_ldtr();
 extern "C" void hv_sgdt(void* dtr);
 extern "C" void hv_sidt(void* dtr);
 extern "C" std::uint64_t hv_read_rflags();
+extern "C" void hv_call_on_stack(void (*fn)(void*), void* arg, void* stack_top);

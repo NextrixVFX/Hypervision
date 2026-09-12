@@ -14,5 +14,4 @@
 *.VC.db
 *.VC.opendb
 
-builds
-.vs
+*.dmp

@@ -51,8 +51,8 @@
     <EnableInf2cat>false</EnableInf2cat>
     <InfVerif>false</InfVerif>
     <SkipPackageVerification>true</SkipPackageVerification>
-    <OutDir>$(SolutionDir)builds\$(ProjectName)\</OutDir>
-    <IntDir>$(SolutionDir)builds\$(ProjectName)\intermediates\</IntDir>
+    <OutDir>$(ProjectDir)..\builds\$(ProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\builds\$(ProjectName)\intermediates\</IntDir>
     <IncludePath>.\;$(IncludePath)</IncludePath>
     <TargetName>Hypervision</TargetName>
   </PropertyGroup>
@@ -61,25 +61,29 @@
     <EnableInf2cat>false</EnableInf2cat>
     <InfVerif>false</InfVerif>
     <SkipPackageVerification>true</SkipPackageVerification>
-    <OutDir>$(SolutionDir)builds\$(ProjectName)\</OutDir>
-    <IntDir>$(SolutionDir)builds\$(ProjectName)\intermediates\</IntDir>
+    <OutDir>$(ProjectDir)..\builds\$(ProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\builds\$(ProjectName)\intermediates\</IntDir>
     <IncludePath>.\;$(IncludePath)</IncludePath>
     <TargetName>Hypervision</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <TreatWarningAsError>false</TreatWarningAsError>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;_AMD64_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <LanguageStandard_C>stdclatest</LanguageStandard_C>
+      <SDLCheck>false</SDLCheck>
+      <ThreadSafeInit>false</ThreadSafeInit>
     </ClCompile>
     <Link>
       <EntryPointSymbol>DriverEntry</EntryPointSymbol>
+      <TreatLinkerWarningAsErrors>false</TreatLinkerWarningAsErrors>
+      <AdditionalOptions>/IGNORE:4210 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <MASM>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -87,18 +91,22 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <TreatWarningAsError>false</TreatWarningAsError>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;_AMD64_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <LanguageStandard_C>stdclatest</LanguageStandard_C>
+      <SDLCheck>false</SDLCheck>
+      <ThreadSafeInit>false</ThreadSafeInit>
     </ClCompile>
     <Link>
       <EntryPointSymbol>DriverEntry</EntryPointSymbol>
+      <TreatLinkerWarningAsErrors>false</TreatLinkerWarningAsErrors>
+      <AdditionalOptions>/IGNORE:4210 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <MASM>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -108,6 +116,7 @@
     <ClCompile Include="entrypoint.cxx" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="impl\ia32\ia32.hxx" />
     <ClInclude Include="impl\includes.hxx" />
     <ClInclude Include="impl\std\std.hxx" />
     <ClInclude Include="impl\crt\crt.hxx" />
@@ -120,10 +129,15 @@
     <ClInclude Include="workspace\utility\log.hxx" />
     <ClInclude Include="workspace\utility\cpu.hxx" />
     <ClInclude Include="workspace\core\npt\npt.hxx" />
+    <ClInclude Include="workspace\core\mm\physical.hxx" />
+    <ClInclude Include="workspace\core\mm\paging.hxx" />
+    <ClInclude Include="workspace\core\mm\process.hxx" />
     <ClInclude Include="workspace\core\svm\vcpu.hxx" />
+    <ClInclude Include="workspace\core\svm\hypercall.hxx" />
     <ClInclude Include="workspace\core\svm\vmexit.hxx" />
     <ClInclude Include="workspace\core\svm\hypervisor.hxx" />
     <ClInclude Include="workspace\core\split\split.hxx" />
+    <ClInclude Include="..\shared\hypercall.hxx" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="impl\amd\svm.asm" />

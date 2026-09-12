@@ -78,6 +78,27 @@ namespace nt
 		return fn(phys);
 	}
 
+	mmpfn_t* get_mm_pfn_database() {
+		static mmpfn_t* mm_pfn_database = nullptr;
+		if (!mm_pfn_database) {
+			static unsigned char* function_address = nullptr;
+			if (!function_address) {
+				function_address = (unsigned char*)g_resolver.lookup_export("KeCapturePersistentThreadState");
+				if (!function_address) return { };
+			}
+
+			while (function_address[0x0] != 0x48
+				|| function_address[0x1] != 0x8B
+				|| function_address[0x2] != 0x05)
+				function_address++;
+
+			mm_pfn_database = *reinterpret_cast<mmpfn_t**>(
+				&function_address[0x7] + *reinterpret_cast<std::int32_t*>(&function_address[0x3]));
+		}
+
+		return mm_pfn_database;
+	}
+
 	inline PPHYSICAL_MEMORY_RANGE mm_get_physical_memory_ranges()
 	{
 		using fn_t = PPHYSICAL_MEMORY_RANGE(*)();
@@ -87,6 +108,85 @@ namespace nt
 		if (!fn)
 			return nullptr;
 		return fn();
+	}
+
+	inline NTSTATUS mm_copy_memory(
+		void* dst,
+		MM_COPY_ADDRESS src,
+		std::size_t size,
+		ULONG flags,
+		std::size_t* transferred)
+	{
+		using fn_t = NTSTATUS(*)(PVOID, MM_COPY_ADDRESS, SIZE_T, ULONG, PSIZE_T);
+		static fn_t fn = nullptr;
+		if (!fn)
+			fn = g_resolver.get_system_routine<fn_t>("MmCopyMemory");
+		if (!fn || !transferred)
+			return STATUS_UNSUCCESSFUL;
+		return fn(dst, src, size, flags, transferred);
+	}
+
+	inline void* mm_map_io_space_ex(PHYSICAL_ADDRESS phys, std::size_t size, ULONG protect)
+	{
+		using fn_t = PVOID(*)(PHYSICAL_ADDRESS, SIZE_T, ULONG);
+		static fn_t fn = nullptr;
+		if (!fn)
+			fn = g_resolver.get_system_routine<fn_t>("MmMapIoSpaceEx");
+		if (!fn)
+			return nullptr;
+		return fn(phys, size, protect);
+	}
+
+	inline void mm_unmap_io_space(void* va, std::size_t size)
+	{
+		using fn_t = void(*)(PVOID, SIZE_T);
+		static fn_t fn = nullptr;
+		if (!fn)
+			fn = g_resolver.get_system_routine<fn_t>("MmUnmapIoSpace");
+		if (fn && va)
+			fn(va, size);
+	}
+
+	inline PMDL mm_allocate_pages_for_mdl(PHYSICAL_ADDRESS low, PHYSICAL_ADDRESS high, PHYSICAL_ADDRESS skip, std::size_t bytes)
+	{
+		using fn_t = PMDL(*)(PHYSICAL_ADDRESS, PHYSICAL_ADDRESS, PHYSICAL_ADDRESS, SIZE_T);
+		static fn_t fn = nullptr;
+		if (!fn)
+			fn = g_resolver.get_system_routine<fn_t>("MmAllocatePagesForMdl");
+		if (!fn)
+			return nullptr;
+		return fn(low, high, skip, bytes);
+	}
+
+	inline void* mm_map_locked_pages_specify_cache(PMDL mdl, KPROCESSOR_MODE mode, MEMORY_CACHING_TYPE cache, void* requested, BOOLEAN bugcheck, ULONG priority)
+	{
+		using fn_t = PVOID(*)(PMDL, KPROCESSOR_MODE, MEMORY_CACHING_TYPE, PVOID, BOOLEAN, ULONG);
+		static fn_t fn = nullptr;
+		if (!fn)
+			fn = g_resolver.get_system_routine<fn_t>("MmMapLockedPagesSpecifyCache");
+		if (!fn || !mdl)
+			return nullptr;
+		return fn(mdl, mode, cache, requested, bugcheck, priority);
+	}
+
+	inline void mm_unmap_locked_pages(void* va, PMDL mdl)
+	{
+		using fn_t = void(*)(PVOID, PMDL);
+		static fn_t fn = nullptr;
+		if (!fn)
+			fn = g_resolver.get_system_routine<fn_t>("MmUnmapLockedPages");
+		if (fn && va && mdl)
+			fn(va, mdl);
+	}
+
+	inline void mm_free_pages_from_mdl(PMDL mdl)
+	{
+		using fn_t = void(*)(PMDL);
+		static fn_t fn = nullptr;
+		if (!fn)
+			fn = g_resolver.get_system_routine<fn_t>("MmFreePagesFromMdl");
+		if (fn && mdl)
+			fn(mdl);
 	}
 
 	inline void* ex_allocate_pool(std::size_t bytes)
@@ -136,6 +236,31 @@ namespace nt
 			*lock = 0;
 	}
 
+	std::uint8_t ke_get_current_irql() {
+		return static_cast<std::uint8_t>(__readcr8());
+	}
+
+	void rtl_move_memory(void* dest, const void* src, size_t length) {
+		static auto function_address = 0ull;
+		if (!function_address) {
+			function_address = g_resolver.get_system_routine("RtlMoveMemory");
+			if (!function_address) return;
+		}
+
+		using function_t = void (*)(void*, const void*, size_t);
+		reinterpret_cast<function_t>(function_address)(dest, src, length);
+	}
+
+	void rtl_zero_memory(void* destination, std::size_t length) {
+		static std::uint64_t function_addr = 0;
+
+		if (!function_addr)
+			function_addr = g_resolver.get_system_routine("RtlZeroMemory");
+
+		using fn_t = void(*)(void*, std::size_t);
+		reinterpret_cast<fn_t>(function_addr)(destination, length);
+	}
+
 	inline void ke_acquire_spin_lock(KSPIN_LOCK* lock, KIRQL* irql)
 	{
 		using fn_t = KIRQL(*)(PKSPIN_LOCK);
@@ -155,6 +280,27 @@ namespace nt
 			fn = g_resolver.get_system_routine<fn_t>("KeReleaseSpinLock");
 		if (fn && lock)
 			fn(lock, irql);
+	}
+
+	inline void rtl_copy_memory(
+		void* dest,
+		const void* src,
+		size_t length
+	)
+	{
+		using fn_t = void(*)(void*,
+			const void*,
+			size_t);
+
+		static fn_t fn = nullptr;
+
+		if (!fn)
+			fn = g_resolver.get_system_routine<fn_t>("RtlCopyMemory");
+
+		if (fn)
+			fn(dest,
+				src,
+				length);
 	}
 
 	inline ULONG ke_query_active_processor_count_ex(USHORT group)
@@ -210,6 +356,53 @@ namespace nt
 		return fn(number);
 	}
 
+	inline std::uint32_t ps_get_current_process_id()
+	{
+		using fn_t = HANDLE(*)();
+		static fn_t fn = nullptr;
+		if (!fn)
+			fn = g_resolver.get_system_routine<fn_t>("PsGetCurrentProcessId");
+		if (!fn)
+			return 0;
+		return static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(fn()));
+	}
+
+	inline eprocess_t* ps_lookup_process_by_pid(std::uint32_t process_id)
+	{
+		using fn_t = NTSTATUS(*)(HANDLE, eprocess_t**);
+		static fn_t fn = nullptr;
+		if (!fn)
+			fn = g_resolver.get_system_routine<fn_t>("PsLookupProcessByProcessId");
+		if (!fn)
+			return nullptr;
+
+		eprocess_t* process = nullptr;
+		if (fn(reinterpret_cast<HANDLE>(static_cast<std::uintptr_t>(process_id)), &process) != STATUS_SUCCESS)
+			return nullptr;
+		return process;
+	}
+
+	inline void* ps_get_process_section_base_address(eprocess_t* process)
+	{
+		using fn_t = void*(*)(eprocess_t*);
+		static fn_t fn = nullptr;
+		if (!fn)
+			fn = g_resolver.get_system_routine<fn_t>("PsGetProcessSectionBaseAddress");
+		if (!fn || !process)
+			return nullptr;
+		return fn(process);
+	}
+
+	inline void ob_dereference_object(void* object)
+	{
+		using fn_t = void(*)(void*);
+		static fn_t fn = nullptr;
+		if (!fn)
+			fn = g_resolver.get_system_routine<fn_t>("ObDereferenceObject");
+		if (fn && object)
+			fn(object);
+	}
+
 	inline bool resolve_core()
 	{
 		const char* required[] = {
@@ -227,6 +420,12 @@ namespace nt
 			"KeSetSystemGroupAffinityThread",
 			"KeRevertToUserGroupAffinityThread",
 			"KeGetCurrentProcessorNumberEx",
+			"PsGetCurrentProcessId",
+			"PsLookupProcessByProcessId",
+			"PsGetProcessSectionBaseAddress",
+			"ObDereferenceObject",
+			"MmCopyMemory",
+			"MmIsAddressValid",
 		};
 
 		for (auto* name : required)

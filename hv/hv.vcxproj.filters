@@ -28,6 +28,12 @@
     <Filter Include="workspace\core\npt">
       <UniqueIdentifier>{07b8c9d0-e1f2-3456-0123-567890123456}</UniqueIdentifier>
     </Filter>
+    <Filter Include="workspace\core\mm">
+      <UniqueIdentifier>{3ae1f234-6789-0123-4567-8901234567aa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shared">
+      <UniqueIdentifier>{4bf2e345-7890-1234-5678-9012345678bb}</UniqueIdentifier>
+    </Filter>
     <Filter Include="workspace\core\svm">
       <UniqueIdentifier>{18c9d0e1-f234-5678-1234-678901234567}</UniqueIdentifier>
     </Filter>
@@ -78,7 +84,19 @@
     <ClInclude Include="workspace\core\npt\npt.hxx">
       <Filter>workspace\core\npt</Filter>
     </ClInclude>
+    <ClInclude Include="workspace\core\mm\physical.hxx">
+      <Filter>workspace\core\mm</Filter>
+    </ClInclude>
+    <ClInclude Include="workspace\core\mm\paging.hxx">
+      <Filter>workspace\core\mm</Filter>
+    </ClInclude>
+    <ClInclude Include="workspace\core\mm\process.hxx">
+      <Filter>workspace\core\mm</Filter>
+    </ClInclude>
     <ClInclude Include="workspace\core\svm\vcpu.hxx">
+      <Filter>workspace\core\svm</Filter>
+    </ClInclude>
+    <ClInclude Include="workspace\core\svm\hypercall.hxx">
       <Filter>workspace\core\svm</Filter>
     </ClInclude>
     <ClInclude Include="workspace\core\svm\vmexit.hxx">
@@ -90,6 +108,10 @@
     <ClInclude Include="workspace\core\split\split.hxx">
       <Filter>workspace\core\split</Filter>
     </ClInclude>
+    <ClInclude Include="..\shared\hypercall.hxx">
+      <Filter>shared</Filter>
+    </ClInclude>
+    <ClInclude Include="impl\ia32\ia32.hxx" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="impl\amd\svm.asm">
@@ -98,5 +120,12 @@
     <MASM Include="impl\nt\ntoskrnl.asm">
       <Filter>impl\nt</Filter>
     </MASM>
+  </ItemGroup>
+  <ItemGroup>
+    <Inf Include="impl\hv.inf" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="architecture.md" />
+    <None Include="documentation\amd64_arch_programmers_manual-vol2-system_programming.pdf" />
   </ItemGroup>
 </Project>

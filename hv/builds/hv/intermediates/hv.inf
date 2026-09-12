@@ -1,0 +1,45 @@
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = System
+ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318}
+Provider    = %Provider%
+CatalogFile = Hypervision.cat
+DriverVer = 09/10/2026,21.18.26.755
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+Hypervision.sys = 1
+
+[Manufacturer]
+%Provider% = Standard,NTamd64
+
+[Standard.NTamd64]
+%DeviceDesc% = HV_Install, Root\Hypervision
+
+[HV_Install]
+CopyFiles = HV_CopyFiles
+
+[HV_CopyFiles]
+Hypervision.sys
+
+[HV_Install.Services]
+AddService = hv,0x00000002,HV_Service
+
+[HV_Service]
+DisplayName    = %ServiceName%
+ServiceType    = 1
+StartType      = 3
+ErrorControl   = 1
+ServiceBinary  = %12%\Hypervision.sys
+
+[Strings]
+Provider     = "Hypervision"
+DiskName     = "Hypervision"
+DeviceDesc   = "Hypervision Type-2 SVM hypervisor"
+ServiceName  = "Hypervision"

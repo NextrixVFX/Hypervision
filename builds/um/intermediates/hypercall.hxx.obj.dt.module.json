@@ -1,0 +1,14 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "D:\\Projects\\General Projects\\Hypervision\\um\\..\\builds\\um\\intermediates\\hypercall.obj",
+            "outputs": [
+                "D:\\Projects\\General Projects\\Hypervision\\um\\..\\builds\\um\\intermediates\\hypercall.hxx.obj.dt.module.json",
+                "D:\\Projects\\General Projects\\Hypervision\\um\\..\\builds\\um\\intermediates\\hypercall.hxx.obj.dt.d.json"
+            ],
+            "requires": []
+        }
+    ]
+}

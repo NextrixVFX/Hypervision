@@ -3,4 +3,5 @@
     <Platform Name="x64" />
   </Configurations>
   <Project Path="hv/hv.vcxproj" Id="3d398f80-6e61-4b7e-b6de-fa1db1e266f9" />
+  <Project Path="um/um.vcxproj" Id="7c4e9a12-8b3d-4f01-9e6a-2d5c8f0b1a44" />
 </Solution>

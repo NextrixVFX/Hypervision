@@ -12,7 +12,7 @@ namespace split
 		bool used;
 	};
 
-	hook_t g_hooks[split_max_hooks]{};
+	hook_t g_hooks[split_max_hooks];
 
 	inline hook_t* find(std::uint64_t gpa)
 	{
@@ -47,6 +47,17 @@ namespace split
 	inline bool owns(std::uint64_t gpa)
 	{
 		return find(gpa) != nullptr;
+	}
+
+	inline bool owns_2mb(std::uint64_t gpa)
+	{
+		const std::uint64_t base = gpa & ~page_2mb_mask;
+		for (auto& hook : g_hooks)
+		{
+			if (hook.used && (hook.gpa & ~page_2mb_mask) == base)
+				return true;
+		}
+		return false;
 	}
 
 	inline bool install(void* guest_va, const void* exec_bytes, std::size_t length)
@@ -142,7 +153,6 @@ namespace split
 
 		vcpu->single_step = false;
 		vcpu->vmcb->state.rflags &= ~amd::rflags_tf;
-		vcpu->vmcb->ctrl.intercept_exception &= ~amd::intercept_db;
 
 		for (auto& hook : g_hooks)
 		{

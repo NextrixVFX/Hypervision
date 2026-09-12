@@ -2,12 +2,6 @@
 
 namespace hv
 {
-	inline void advance_rip(vcpu_t* vcpu)
-	{
-		if (vcpu->vmcb->ctrl.nrip)
-			vcpu->vmcb->state.rip = vcpu->vmcb->ctrl.nrip;
-	}
-
 	inline void handle_cpuid(vcpu_t* vcpu)
 	{
 		int regs[4]{};
@@ -87,25 +81,37 @@ namespace hv
 		const std::uint64_t info1 = vcpu->vmcb->ctrl.exit_info1;
 		const std::uint64_t gpa = vcpu->vmcb->ctrl.exit_info2;
 
-		KIRQL irql{};
-		nt::ke_acquire_spin_lock(&npt::g_npt.m_lock, &irql);
+		while (InterlockedCompareExchange(&npt::g_npt.m_busy, 1, 0) != 0)
+			_mm_pause();
+
 		if (split::owns(gpa))
 		{
 			split::handle_npf(vcpu, gpa, info1);
 		}
 		else
 		{
-			if (!npt::g_npt.identity_fault(gpa))
-				hv_log("NPF GPA=%llx info1=%llx (map failed)", gpa, info1);
+			const std::uint64_t page = gpa & ~page_4kb_mask;
+			if (split::owns_2mb(gpa))
+			{
+				npt::g_npt.split_2mb(gpa);
+				npt::g_npt.map_4k(page, page, amd::npt_rwx);
+			}
+			else if (!npt::g_npt.identity_fault(gpa))
+			{
+				npt::g_npt.split_2mb(gpa);
+				npt::g_npt.map_4k(page, page, amd::npt_rwx);
+			}
 			vcpu->vmcb->ctrl.tlb_control = amd::tlb_flush_asid;
 			vcpu->vmcb->ctrl.vmcb_clean = 0;
 		}
-		nt::ke_release_spin_lock(&npt::g_npt.m_lock, irql);
+
+		InterlockedExchange(&npt::g_npt.m_busy, 0);
 	}
 }
 
 extern "C" std::uint8_t hv_handle_vmexit(hv::vcpu_t* vcpu)
 {
+	__writeeflags(__readeflags() & ~amd::rflags_tf);
 	vcpu->vmcb->ctrl.tlb_control = amd::tlb_flush_nothing;
 	const std::uint64_t code = vcpu->vmcb->ctrl.exit_code;
 
@@ -123,15 +129,15 @@ extern "C" std::uint8_t hv_handle_vmexit(hv::vcpu_t* vcpu)
 	case amd::vmexit_db:
 		if (!split::handle_db(vcpu))
 		{
-			// SVM Architecture Reference (33047) §2.16 EVENTINJ matches EXITINTINFO:
-			// VECTOR bits 7:0, TYPE bits 10:8 (3 = exception), V bit 31.
-			// Vector 1 is #DB — re-inject a guest debug exception we did not consume.
-			vcpu->vmcb->ctrl.event_inj = (1ull << 31) | (3ull << 8) | 1;
+			vcpu->vmcb->state.rflags &= ~amd::rflags_tf;
+			if (vcpu->vmcb->state.cpl != 0)
+			{
+				vcpu->vmcb->ctrl.event_inj = (1ull << 31) | (3ull << 8) | 1;
+			}
 		}
 		break;
 	case amd::vmexit_vmmcall:
-		vcpu->vmcb->state.rax = vcpu->guest_rcx == 1 ? 0x4856 : static_cast<std::uint64_t>(-1);
-		hv::advance_rip(vcpu);
+		hv::handle_vmmcall(vcpu);
 		break;
 	case amd::vmexit_vmrun:
 	case amd::vmexit_vmload:

@@ -8,7 +8,7 @@ namespace nt
 
 	class c_resolver
 	{
-		std::addr_t m_nt_base{};
+		std::addr_t m_nt_base;
 
 	public:
 		std::addr_t nt_base() const
