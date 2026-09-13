@@ -15,4 +15,5 @@
 *.VC.opendb
 
 *.dmp
-builds/
+**/builds/
+*.exe
