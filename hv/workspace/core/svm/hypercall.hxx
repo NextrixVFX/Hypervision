@@ -252,12 +252,8 @@ namespace hv
 
 		if (vcpu->vmcb->state.cpl != 0)
 		{
-			void* const stack = thread_initial_stack();
-			if (stack)
-			{
-				hv_call_on_stack(&run_hypercall, vcpu, stack);
-				return;
-			}
+			hv_run_with_nt(&run_hypercall, vcpu);
+			return;
 		}
 		run_hypercall(vcpu);
 	}

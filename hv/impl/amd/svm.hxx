@@ -230,4 +230,4 @@ extern "C" std::uint16_t hv_read_ldtr();
 extern "C" void hv_sgdt(void* dtr);
 extern "C" void hv_sidt(void* dtr);
 extern "C" std::uint64_t hv_read_rflags();
-extern "C" void hv_call_on_stack(void (*fn)(void*), void* arg, void* stack_top);
+extern "C" void hv_run_with_nt(void (*fn)(void*), void* arg);

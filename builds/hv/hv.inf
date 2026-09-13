@@ -4,7 +4,7 @@ Class       = System
 ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318}
 Provider    = %Provider%
 CatalogFile = Hypervision.cat
-DriverVer = 09/11/2026,23.12.34.795
+DriverVer = 09/12/2026,20.19.10.952
 PnpLockdown = 1
 
 [DestinationDirs]

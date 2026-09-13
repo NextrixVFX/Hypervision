@@ -107,12 +107,83 @@ namespace hv
 
 		InterlockedExchange(&npt::g_npt.m_busy, 0);
 	}
+
+	// Win11 22H2/24H2 KTHREAD. host_stack is contig memory NT does not treat as
+	// this thread's kernel stack. A nested #PF there is 0x1AA Arg2=3
+	// (NormalStackLimits) minutes later when some host exception finally fires.
+	// Borrow the current thread's stack bounds for the host C frame, then put
+	// them back before VMRUN. Do not switch RSP onto InitialStack — that
+	// overwrites a live kernel trap frame when the guest is in CPL0.
+	inline constexpr std::uint32_t kthread_initial_stack = 0x28;
+	inline constexpr std::uint32_t kthread_stack_limit = 0x30;
+	inline constexpr std::uint32_t kthread_stack_base = 0x38;
+	inline constexpr std::uint32_t kthread_kernel_stack = 0x58;
+	inline constexpr std::uint32_t kthread_trap_frame = 0x90;
+	inline constexpr std::uint32_t kthread_shadow_stack = 0x408;
+
+	struct host_stack_bind
+	{
+		std::uint8_t* thread{};
+		void* initial_stack{};
+		void* stack_limit{};
+		void* stack_base{};
+		void* kernel_stack{};
+		void* trap_frame{};
+		void* shadow_stack{};
+		bool active{};
+
+		explicit host_stack_bind(vcpu_t* vcpu)
+		{
+			if (!vcpu || !vcpu->host_stack || !vcpu->host_stack_top)
+				return;
+
+			thread = reinterpret_cast<std::uint8_t*>(__readgsqword(0x188));
+			if (!thread)
+				return;
+
+			initial_stack = *reinterpret_cast<void**>(thread + kthread_initial_stack);
+			stack_limit = *reinterpret_cast<void**>(thread + kthread_stack_limit);
+			stack_base = *reinterpret_cast<void**>(thread + kthread_stack_base);
+			kernel_stack = *reinterpret_cast<void**>(thread + kthread_kernel_stack);
+			trap_frame = *reinterpret_cast<void**>(thread + kthread_trap_frame);
+			shadow_stack = *reinterpret_cast<void**>(thread + kthread_shadow_stack);
+
+			auto* const top = reinterpret_cast<void*>(vcpu->host_stack_top);
+			*reinterpret_cast<void**>(thread + kthread_initial_stack) = top;
+			*reinterpret_cast<void**>(thread + kthread_stack_limit) = vcpu->host_stack;
+			*reinterpret_cast<void**>(thread + kthread_stack_base) = top;
+			*reinterpret_cast<void**>(thread + kthread_kernel_stack) = _AddressOfReturnAddress();
+			active = true;
+		}
+
+		void restore()
+		{
+			if (!active || !thread)
+				return;
+			*reinterpret_cast<void**>(thread + kthread_initial_stack) = initial_stack;
+			*reinterpret_cast<void**>(thread + kthread_stack_limit) = stack_limit;
+			*reinterpret_cast<void**>(thread + kthread_stack_base) = stack_base;
+			*reinterpret_cast<void**>(thread + kthread_kernel_stack) = kernel_stack;
+			*reinterpret_cast<void**>(thread + kthread_trap_frame) = trap_frame;
+			*reinterpret_cast<void**>(thread + kthread_shadow_stack) = shadow_stack;
+			active = false;
+		}
+
+		~host_stack_bind()
+		{
+			restore();
+		}
+
+		host_stack_bind(const host_stack_bind&) = delete;
+		host_stack_bind& operator=(const host_stack_bind&) = delete;
+	};
 }
 
 extern "C" std::uint8_t hv_handle_vmexit(hv::vcpu_t* vcpu)
 {
 	__writeeflags(__readeflags() & ~amd::rflags_tf);
 	vcpu->vmcb->ctrl.tlb_control = amd::tlb_flush_nothing;
+	hv::host_stack_bind bind(vcpu);
 	const std::uint64_t code = vcpu->vmcb->ctrl.exit_code;
 
 	switch (code)
@@ -159,5 +230,6 @@ extern "C" std::uint8_t hv_handle_vmexit(hv::vcpu_t* vcpu)
 		break;
 	}
 
+	bind.restore();
 	return 1;
 }

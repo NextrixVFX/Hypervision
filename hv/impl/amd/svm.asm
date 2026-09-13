@@ -1,7 +1,7 @@
 ; Keep offsets in sync with hv::vcpu_t in workspace/core/svm/vcpu.hxx.
 
 PUBLIC hv_svm_launch
-PUBLIC hv_call_on_stack
+PUBLIC hv_run_with_nt
 PUBLIC hv_read_cs
 PUBLIC hv_read_ss
 PUBLIC hv_read_ds
@@ -215,6 +215,9 @@ host_loop:
     and qword ptr [rsp], 0FFFFFFFFFFFFFEFFh
     popfq
 
+    ; Stay on host_stack. Do not STGI here — that re-enabled the clock on
+    ; every #NPF and caused 0x101. hv_handle_vmexit publishes host_stack in
+    ; the current KTHREAD so a nested #PF is not 0x1AA.
     mov rcx, rax
     sub rsp, 20h
     call hv_handle_vmexit
@@ -237,34 +240,31 @@ guest_land:
     ret
 hv_svm_launch ENDP
 
-; rcx = fn, rdx = arg, r8 = stack top (grows down)
-; Switch onto a real KTHREAD stack, then STGI so MmCopyMemory can take #PF.
-; Keep IF=0 so the clock DPC does not run on this borrowed stack (0xD1
-; IRQL=0xFF / NULL fetch after a handful of VMMCALLs).
-; Drop 0x80 below InitialStack (16-aligned, includes 0x20 shadow).
-hv_call_on_stack PROC
+; rcx = fn, rdx = arg
+; Already on host_stack. STGI so MmCopyMemory can #PF; CLI so the clock DPC
+; does not run here (0xD1 IRQL=0xFF). C code has already bound this stack
+; into the current KTHREAD so that #PF is not 0x1AA.
+hv_run_with_nt PROC
     push rbx
     push rsi
     mov rbx, rsp
     mov rsi, rcx
     mov rcx, rdx
-    and r8, 0FFFFFFFFFFFFFFF0h
-    sub r8, 80h
-    mov rsp, r8
     pushfq
     and qword ptr [rsp], 0FFFFFFFFFFFFFCFFh
     popfq
     cli
     xor eax, eax
     mov dr7, rax
-    sub rsp, 8
+    sub rsp, 20h
     stgi
     call rsi
     clgi
+    add rsp, 20h
     mov rsp, rbx
     pop rsi
     pop rbx
     ret
-hv_call_on_stack ENDP
+hv_run_with_nt ENDP
 
 END
